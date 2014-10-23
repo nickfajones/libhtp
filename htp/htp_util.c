@@ -2355,9 +2355,6 @@ int htp_treat_response_line_as_body(htp_tx_t *tx) {
  * @param[in] d
  */
 htp_status_t htp_req_run_hook_body_data(htp_connp_t *connp, htp_tx_data_t *d) {
-    // Do not invoke callbacks with an empty data chunk
-    if ((d->data != NULL) && (d->len == 0)) return HTP_OK;
-
     // Run transaction hooks first
     htp_status_t rc = htp_hook_run_all(connp->in_tx->hook_request_body_data, d);
     if (rc != HTP_OK) return rc;
