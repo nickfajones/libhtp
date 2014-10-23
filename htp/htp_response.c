@@ -495,10 +495,13 @@ htp_status_t htp_connp_RES_BODY_DETERMINE(htp_connp_t *connp) {
                 && (connp->out_tx->response_status_number <= 299)) {
             // This is a successful CONNECT stream, which means
             // we need to switch into tunneling mode.
+            connp->out_tx->response_transfer_coding = HTP_CODING_NO_BODY;
             connp->in_status = HTP_STREAM_TUNNEL;
             connp->out_status = HTP_STREAM_TUNNEL;
             connp->out_state = htp_connp_RES_FINALIZE;
-            return HTP_OK;
+            // Because we are in STREAM TUNNEL mode, the next state function will not
+            // be invoked, so we need to force headers complete now
+            return htp_tx_state_response_headers(connp->out_tx);
         } else {
             // This is a failed CONNECT stream, which means that
             // we can unblock request parsing
