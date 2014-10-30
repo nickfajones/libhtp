@@ -1722,7 +1722,10 @@ int htp_normalize_parsed_uri(htp_tx_t *tx, htp_uri_t *incomplete, htp_uri_t *nor
     }
 
     // Port.
-    if (incomplete->port != NULL) {
+    if (incomplete->port_number != -1) {
+        // port was already validated and converted to integer during parsing
+        normalized->port_number = incomplete->port_number;
+    } else if (incomplete->port != NULL) {
         int64_t port_parsed = htp_parse_positive_integer_whitespace(
                 bstr_ptr(incomplete->port), bstr_len(incomplete->port), 10);
 
