@@ -216,6 +216,7 @@ htp_status_t htp_parse_ct_header(bstr *header, bstr **ct);
 
 htp_status_t htp_connp_req_receiver_finalize_clear(htp_connp_t *connp);
 htp_status_t htp_connp_res_receiver_finalize_clear(htp_connp_t *connp);
+htp_status_t htp_connp_res_receiver_finalize_clear_ex(htp_connp_t *connp, const void *data, size_t len);
 
 htp_status_t htp_tx_finalize(htp_tx_t *tx);
 

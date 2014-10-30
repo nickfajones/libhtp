@@ -1953,6 +1953,140 @@ TEST_F(ConnectionParsing, ResponseContentRange_Invalid) {
 }
 
 // ----------------------------------------------------------------------------
+// Premature connection close tests
+
+// middle of response headers
+TEST_F(ConnectionParsing, CloseResHeaders)
+  {
+  int rc = test_run(home, "94-close-res-headers.t", cfg, &connp);
+  ASSERT_EQ(rc, 1);
+
+  ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+  htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+  ASSERT_TRUE(tx != NULL);
+
+  ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+  ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+  ASSERT_EQ(17, tx->response_content_length);
+  ASSERT_EQ(NULL, tx->response_content_type);
+  }
+
+// middle of Content Length demarcated data
+TEST_F(ConnectionParsing, CloseCLData)
+  {
+  int rc = test_run(home, "95-close-cl-data.t", cfg, &connp);
+  ASSERT_EQ(rc, 1);
+
+  ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+  htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+  ASSERT_TRUE(tx != NULL);
+
+  ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+  ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+  ASSERT_EQ(12, tx->response_message_len);
+  }
+
+// beginning of chunked header
+TEST_F(ConnectionParsing, CloseChunkedLength1) {
+    int rc = test_run(home, "96-close-chunked-length-1.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+    ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+    ASSERT_EQ(0, tx->response_message_len);
+}
+
+// middle of chunked header
+TEST_F(ConnectionParsing, CloseChunkedLength2) {
+    int rc = test_run(home, "96-close-chunked-length-2.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+    ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+    ASSERT_EQ(1, tx->response_message_len);
+}
+
+// beginning of chunked data
+TEST_F(ConnectionParsing, CloseChunkedData1) {
+    int rc = test_run(home, "97-close-chunked-data-1.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+    ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+    ASSERT_EQ(3, tx->response_message_len);
+}
+
+// part way through chunkded data
+TEST_F(ConnectionParsing, CloseChunkedData2) {
+    int rc = test_run(home, "97-close-chunked-data-2.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+    ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+    ASSERT_EQ(8, tx->response_message_len);
+}
+
+// beginning of chunked data end
+TEST_F(ConnectionParsing, CloseChunkedDataEnd1) {
+    int rc = test_run(home, "98-close-chunked-data-end-1.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+    ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+    ASSERT_EQ(13, tx->response_message_len);
+}
+
+// middle of chunked data end
+TEST_F(ConnectionParsing, CloseChunkedDataEnd2) {
+    int rc = test_run(home, "98-close-chunked-data-end-2.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(HTP_REQUEST_COMPLETE, tx->request_progress);
+    ASSERT_EQ(HTP_RESPONSE_COMPLETE, tx->response_progress);
+
+    ASSERT_EQ(14, tx->response_message_len);
+}
+
+// ----------------------------------------------------------------------------
 
 static int BodyDataOffset_Callback_BODY_DATA(htp_tx_data_t *d);
 static int BodyDataOffset_Callback_BODY_COMPLETE(htp_tx_t *tx);

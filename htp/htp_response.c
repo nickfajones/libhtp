@@ -104,6 +104,31 @@ static htp_status_t htp_connp_res_receiver_send_data(htp_connp_t *connp, int is_
 }
 
 /**
+ * Sends outstanding connection data to the currently active data receiver hook.
+ * Receives the relevant data vector directly rather than deriving it internally.
+ *
+ * @param[in] connp
+ * @param[in] data
+ * @param[in] len
+ * @param[in] is_last
+ * @return HTP_OK, or a value returned from a callback.
+ */
+static htp_status_t htp_connp_res_receiver_send_data_ex(htp_connp_t *connp, const void *data, size_t len, int is_last) {
+    if (connp->out_data_receiver_hook == NULL) return HTP_OK;
+
+    htp_tx_data_t d;
+    d.tx = connp->out_tx;
+    d.data = data;
+    d.len = len;
+    d.is_last = is_last;
+
+    htp_status_t rc = htp_hook_run_all(connp->out_data_receiver_hook, &d);
+    if (rc != HTP_OK) return rc;
+
+    return HTP_OK;
+}
+
+/**
  * Finalizes an existing data receiver hook by sending any outstanding data to it. The
  * hook is then removed so that it receives no more data.
  *
@@ -114,6 +139,26 @@ htp_status_t htp_connp_res_receiver_finalize_clear(htp_connp_t *connp) {
     if (connp->out_data_receiver_hook == NULL) return HTP_OK;
 
     htp_status_t rc = htp_connp_res_receiver_send_data(connp, 1 /* last */);
+
+    connp->out_data_receiver_hook = NULL;
+
+    return rc;
+}
+
+/**
+ * Finalizes an existing data receiver hook by sending any outstanding data to it. The
+ * hook is then removed so that it receives no more data.
+ * Receives the relevant data vector directly.
+ *
+ * @param[in] connp
+ * @param[in] data
+ * @param[in] len
+ * @return HTP_OK, or a value returned from a callback.
+ */
+htp_status_t htp_connp_res_receiver_finalize_clear_ex(htp_connp_t *connp, const void *data, size_t len) {
+    if (connp->out_data_receiver_hook == NULL) return HTP_OK;
+
+    htp_status_t rc = htp_connp_res_receiver_send_data_ex(connp, data, len, 1 /* last */);
 
     connp->out_data_receiver_hook = NULL;
 
@@ -303,11 +348,21 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_DATA_END(htp_connp_t *connp) {
     //      so we should warn about anything else.
 
     for (;;) {
-        OUT_NEXT_BYTE_OR_RETURN(connp);
+        // Get the next byte, but only if the stream is not closed. Currently,
+        // trying to get a byte from a closed stream leaves the parser with HTP_DATA. It
+        // would be better to have a special value to indicate the end of stream. Then
+        // the states could handle it correctly.
+        if (connp->out_status != HTP_STREAM_CLOSED) {
+            OUT_NEXT_BYTE_OR_RETURN(connp);
 
-        connp->out_tx->response_message_len++;
+            connp->out_tx->response_message_len++;
+        }
 
-        if (connp->out_next_byte == LF) {
+        if (connp->out_status == HTP_STREAM_CLOSED) {
+            connp->out_state = htp_connp_RES_FINALIZE;
+
+            return HTP_OK;
+        } else if (connp->out_next_byte == LF) {
             connp->out_state = htp_connp_RES_BODY_CHUNKED_LENGTH;
 
             return HTP_OK;
@@ -333,21 +388,25 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_DATA(htp_connp_t *connp) {
         bytes_to_consume = connp->out_current_len - connp->out_current_read_offset;
     }
 
-    if (bytes_to_consume == 0) return HTP_DATA;
+    if (bytes_to_consume != 0) {
+        // Adjust the counters.
+        connp->out_current_read_offset += bytes_to_consume;
+        connp->out_current_consume_offset += bytes_to_consume;
+        connp->out_stream_offset += bytes_to_consume;
+        connp->out_tx->response_message_len += bytes_to_consume;
+        connp->out_chunked_length -= bytes_to_consume;
 
-    // Adjust the counters.
-    connp->out_current_read_offset += bytes_to_consume;
-    connp->out_current_consume_offset += bytes_to_consume;
-    connp->out_stream_offset += bytes_to_consume;
-    connp->out_tx->response_message_len += bytes_to_consume;
-    connp->out_chunked_length -= bytes_to_consume;
+        // Consume the data.
+        htp_status_t rc = htp_tx_res_process_body_data_ex(connp->out_tx,
+            connp->out_current_data + connp->out_current_read_offset - bytes_to_consume,
+            bytes_to_consume);
+        if (rc != HTP_OK) return rc;
+    }
 
-    // Consume the data.
-    htp_status_t rc = htp_tx_res_process_body_data_ex(connp->out_tx,
-        connp->out_current_data + connp->out_current_read_offset - bytes_to_consume,
-        bytes_to_consume);
-    if (rc != HTP_OK) return rc;
-
+    if (connp->out_status == HTP_STREAM_CLOSED) {
+        connp->out_state = htp_connp_RES_FINALIZE;
+        return HTP_OK;
+    } else
     // Have we seen the entire chunk?
     if (connp->out_chunked_length == 0) {
         connp->out_state = htp_connp_RES_BODY_CHUNKED_DATA_END;
@@ -365,10 +424,16 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_DATA(htp_connp_t *connp) {
  */
 htp_status_t htp_connp_RES_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
     for (;;) {
-        OUT_COPY_BYTE_OR_RETURN(connp);
+        // Get the next byte, but only if the stream is not closed. Currently,
+        // trying to get a byte from a closed stream leaves the parser with HTP_DATA. It
+        // would be better to have a special value to indicate the end of stream. Then
+        // the states could handle it correctly.
+        if (connp->out_status != HTP_STREAM_CLOSED) {
+            OUT_COPY_BYTE_OR_RETURN(connp);
+        }
         
         // Have we reached the end of the line?
-        if (connp->out_next_byte == LF) {
+        if ((connp->out_next_byte == LF) || (connp->out_status == HTP_STREAM_CLOSED)) {
             unsigned char *data;
             size_t len;
 
@@ -389,7 +454,9 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
             htp_connp_res_clear_buffer(connp);
 
             // Handle chunk length
-            if (connp->out_chunked_length > 0) {
+            if (connp->out_status == HTP_STREAM_CLOSED) {
+                connp->out_state = htp_connp_RES_FINALIZE;
+            } else if (connp->out_chunked_length > 0) {
                 // More data available                
                 connp->out_state = htp_connp_RES_BODY_CHUNKED_DATA;
             } else if (connp->out_chunked_length == 0) {
@@ -426,23 +493,23 @@ htp_status_t htp_connp_RES_BODY_IDENTITY_CL_KNOWN(htp_connp_t *connp) {
         bytes_to_consume = connp->out_current_len - connp->out_current_read_offset;
     }       
     
-    if (bytes_to_consume == 0) return HTP_DATA;    
+    if (bytes_to_consume != 0) {
+        // Adjust the counters.
+        connp->out_current_read_offset += bytes_to_consume;
+        connp->out_current_consume_offset += bytes_to_consume;
+        connp->out_stream_offset += bytes_to_consume;
+        connp->out_body_data_left -= bytes_to_consume;
+        connp->out_tx->response_message_len += bytes_to_consume;
 
-    // Adjust the counters.
-    connp->out_current_read_offset += bytes_to_consume;
-    connp->out_current_consume_offset += bytes_to_consume;
-    connp->out_stream_offset += bytes_to_consume;
-    connp->out_body_data_left -= bytes_to_consume;
-    connp->out_tx->response_message_len += bytes_to_consume;
-
-    // Consume the data.
-    htp_status_t rc = htp_tx_res_process_body_data_ex(connp->out_tx,
-        connp->out_current_data + connp->out_current_read_offset - bytes_to_consume,
-        bytes_to_consume);
-    if (rc != HTP_OK) return rc;
+        // Consume the data.
+        htp_status_t rc = htp_tx_res_process_body_data_ex(connp->out_tx,
+            connp->out_current_data + connp->out_current_read_offset - bytes_to_consume,
+            bytes_to_consume);
+        if (rc != HTP_OK) return rc;
+    }
 
     // Have we seen the entire response body?    
-    if (connp->out_body_data_left == 0) {
+    if ((connp->out_body_data_left == 0) || (connp->out_status == HTP_STREAM_CLOSED)) {
         connp->out_state = htp_connp_RES_FINALIZE;
         return HTP_OK;
     }
@@ -666,10 +733,12 @@ htp_status_t htp_connp_RES_BODY_DETERMINE(htp_connp_t *connp) {
  */
 htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
     for (;;) {
-        OUT_COPY_BYTE_OR_RETURN(connp);
+        if (connp->out_status != HTP_STREAM_CLOSED) {
+            OUT_COPY_BYTE_OR_RETURN(connp);
+        }
 
         // Have we reached the end of the line?
-        if (connp->out_next_byte == LF) {
+        if ((connp->out_next_byte == LF) || (connp->out_status == HTP_STREAM_CLOSED)) {
             unsigned char *data;
             size_t len;
 
@@ -682,7 +751,7 @@ htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
             #endif
 
             // Should we terminate headers?
-            if (htp_connp_is_line_terminator(connp, data, len)) {
+            if ((htp_connp_is_line_terminator(connp, data, len)) || (connp->out_status == HTP_STREAM_CLOSED)) {
                 // Parse previous header, if any.
                 if (connp->out_header != NULL) {
                     if (connp->cfg->process_response_header(connp, bstr_ptr(connp->out_header),
@@ -692,10 +761,15 @@ htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
                     connp->out_header = NULL;
                 }
 
-                htp_connp_res_clear_buffer(connp);
-
                 // We've seen all response headers.
-                if (connp->out_tx->response_progress == HTP_RESPONSE_HEADERS) {
+                if (connp->out_status == HTP_STREAM_CLOSED) {
+                    // Send any partial line as header data.
+                    htp_status_t rc = htp_connp_res_receiver_finalize_clear_ex(connp, data, len);
+                    if (rc != HTP_OK) return rc;
+
+                    // The next step is to extract as much information as we can from the partial headers.
+                    connp->out_state = htp_connp_RES_BODY_DETERMINE;
+                } else if (connp->out_tx->response_progress == HTP_RESPONSE_HEADERS) {
                     // Response headers.
 
                     // The next step is to determine if this response has a body.
@@ -714,6 +788,8 @@ htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
                     // The next step is to finalize this response.
                     connp->out_state = htp_connp_RES_FINALIZE;
                 }
+
+                htp_connp_res_clear_buffer(connp);
 
                 return HTP_OK;
             }

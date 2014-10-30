@@ -45,6 +45,10 @@ void htp_connp_clear_error(htp_connp_t *connp) {
 void htp_connp_close(htp_connp_t *connp, const struct timeval *timestamp) {
     if (connp == NULL) return;
     
+    #ifdef HTP_DEBUG
+    fprintf(stderr, "htp_connp_close\n");
+    #endif
+
     // Close the underlying connection.
     htp_conn_close(connp->conn, timestamp);
 
