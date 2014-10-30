@@ -159,8 +159,9 @@ int htp_parse_authorization_basic(htp_connp_t *connp, htp_header_t *auth_header)
  * @param[in] connp
  */
 int htp_parse_authorization(htp_connp_t *connp) {
-    htp_header_t *auth_header = htp_table_get_c(connp->in_tx->request_headers, "authorization");
-    if (auth_header == NULL) {
+    htp_header_t *auth_header = NULL;
+    if (((auth_header = htp_table_get_c(connp->in_tx->request_headers, "authorization")) == NULL) &&
+        ((auth_header = htp_table_get_c(connp->in_tx->request_headers, "proxy-authorization")) == NULL)) {
         connp->in_tx->request_auth_type = HTP_AUTH_NONE;
         return HTP_OK;
     }
