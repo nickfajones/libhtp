@@ -702,7 +702,7 @@ htp_status_t htp_connp_RES_BODY_DETERMINE(htp_connp_t *connp) {
                 if (bstr_index_of_c_nocase(ct->value, "multipart/byteranges") != -1) {
                     htp_log(connp, HTP_LOG_MARK, HTP_LOG_ERROR, 0,
                             "C-T multipart/byteranges in responses not supported");
-                    return HTP_ERROR;
+                    return HTP_UNSUPPORTED;
                 }
             }
 
@@ -1171,6 +1171,17 @@ int htp_connp_res_data(htp_connp_t *connp, const struct timeval *timestamp, cons
                     // Partial chunk consumption
                     return HTP_STREAM_DATA_OTHER;
                 }
+            }
+
+            // Check for unsupported protocol features
+            if (rc == HTP_UNSUPPORTED) {
+                #ifdef HTP_DEBUG
+                fprintf(stderr, "htp_connp_res_data: returning HTP_STREAM_TUNNEL\n");
+                #endif
+
+                connp->out_status = HTP_STREAM_TUNNEL;
+
+                return HTP_STREAM_TUNNEL;
             }
 
             #ifdef HTP_DEBUG

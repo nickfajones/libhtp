@@ -110,6 +110,15 @@ typedef struct htp_uri_t htp_uri_t;
  */
 #define HTP_DATA_BUFFER             5
 
+
+/**
+ * Similar to HTP_ERROR, but indicates that an element of the data
+ * stream has been recognised as unsupported, thus the stream becomes
+ * unparseable
+ */
+#define HTP_UNSUPPORTED             6
+
+
 /**
  * The highest htp_status_t value LibHTP will use internally.
  */
