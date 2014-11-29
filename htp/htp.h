@@ -292,6 +292,12 @@ struct htp_tx_t {
      */
     int64_t request_entity_len;   
 
+    /**
+     * The length of the current chunk header and footer line, including CR and LF.
+     * Useful as an offset to the start of real data in a chunked http stream.
+     */
+    int64_t request_chunk_header_len;
+
     /** Parsed request headers. */
     htp_table_t *request_headers;   
 
@@ -472,6 +478,12 @@ struct htp_tx_t {
      * but only on partial (206) responses. Zero otherwise.
      */
     int64_t response_entity_offset;
+
+    /**
+     * The length of the current chunk header and footer line, including CR and LF.
+     * Useful as an offset to the start of real data in a chunked http stream.
+     */
+    int64_t response_chunk_header_len;
 
     /**
      * Contains the value specified in the Content-Length header. The value of this

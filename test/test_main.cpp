@@ -2087,6 +2087,217 @@ TEST_F(ConnectionParsing, CloseChunkedDataEnd2) {
 }
 
 // ----------------------------------------------------------------------------
+// Chunk header len
+
+static size_t chl_request_accumulated = 0;
+static size_t chl_response_accumulated = 0;
+
+static int chl_data_hook(htp_tx_data_t *d) {
+  chl_request_accumulated += d->tx->request_chunk_header_len;
+  chl_response_accumulated += d->tx->response_chunk_header_len;
+
+  return HTP_OK;
+}
+static int chl_complete_hook(htp_tx_t *tx) {
+  chl_request_accumulated += tx->request_chunk_header_len;
+  chl_response_accumulated += tx->response_chunk_header_len;
+
+  return HTP_OK;
+}
+
+// ----------------------------------------------------------------------------
+// Regular
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderRegular1) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-regular-1.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(8, chl_request_accumulated);
+    ASSERT_EQ(8, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderRegular2) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-regular-2.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(59, chl_request_accumulated);
+    ASSERT_EQ(59, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk1) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-1.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(8, chl_request_accumulated);
+    ASSERT_EQ(8, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk2) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-2.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(9, chl_request_accumulated);
+    ASSERT_EQ(9, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk3) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-3.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(9, chl_request_accumulated);
+    ASSERT_EQ(9, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk4) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-4.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(9, chl_request_accumulated);
+    ASSERT_EQ(9, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk5) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-5.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(9, chl_request_accumulated);
+    ASSERT_EQ(9, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk6) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-6.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(9, chl_request_accumulated);
+    ASSERT_EQ(9, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+TEST_F(ConnectionParsing, ChunkHeaderLengthHeaderSplitChunk7) {
+    htp_config_register_request_body_data(cfg, chl_data_hook);
+    htp_config_register_request_complete(cfg, chl_complete_hook);
+    htp_config_register_response_body_data(cfg, chl_data_hook);
+    htp_config_register_response_complete(cfg, chl_complete_hook);
+
+    int rc = test_run(home, "99-chunk-header-length-split-chunk-7.t", cfg, &connp);
+    ASSERT_EQ(rc, 1);
+
+    ASSERT_EQ(1, htp_list_size(connp->conn->transactions));
+
+    htp_tx_t *tx = (htp_tx_t *) htp_list_get(connp->conn->transactions, 0);
+    ASSERT_TRUE(tx != NULL);
+
+    ASSERT_EQ(9, chl_request_accumulated);
+    ASSERT_EQ(9, chl_response_accumulated);
+
+    chl_request_accumulated = 0;
+    chl_response_accumulated = 0;
+}
+
+
+// ----------------------------------------------------------------------------
 
 static int BodyDataOffset_Callback_BODY_DATA(htp_tx_data_t *d);
 static int BodyDataOffset_Callback_BODY_COMPLETE(htp_tx_t *tx);

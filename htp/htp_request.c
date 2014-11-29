@@ -350,6 +350,7 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_DATA_END(htp_connp_t *connp) {
         IN_NEXT_BYTE_OR_RETURN(connp);
 
         connp->in_tx->request_message_len++;
+        connp->in_tx->request_chunk_header_len++;
 
         if (connp->in_next_byte == LF) {
             connp->in_state = htp_connp_REQ_BODY_CHUNKED_LENGTH;
@@ -417,6 +418,9 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
     for (;;) {
         IN_COPY_BYTE_OR_RETURN(connp);
 
+        connp->in_tx->request_message_len++;
+        connp->in_tx->request_chunk_header_len++;
+
         // Have we reached the end of the line?
         if (connp->in_next_byte == LF) {
             unsigned char *data;
@@ -425,8 +429,6 @@ htp_status_t htp_connp_REQ_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
             if (htp_connp_req_consolidate_data(connp, &data, &len) != HTP_OK) {
                 return HTP_ERROR;
             }
-
-            connp->in_tx->request_message_len += len;
 
             #ifdef HTP_DEBUG
             fprint_raw_data(stderr, "Chunk length line", data, len);

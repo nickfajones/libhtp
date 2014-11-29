@@ -667,6 +667,10 @@ htp_status_t htp_tx_req_process_body_data_ex(htp_tx_t *tx, const void *data, siz
             tx->request_entity_len += d.len;
 
             htp_status_t rc = htp_req_run_hook_body_data(tx->connp, &d);
+
+            // Reset the chunk header length to avoid double accounting
+            tx->request_chunk_header_len = 0;
+
             if (rc != HTP_OK) return HTP_ERROR;
             break;
 
@@ -902,6 +906,10 @@ htp_status_t htp_tx_res_process_body_data_ex(htp_tx_t *tx, const void *data, siz
             tx->response_entity_len += d.len;
 
             htp_status_t rc = htp_res_run_hook_body_data(tx->connp, &d);
+
+            // Reset the chunk header length to avoid double accounting
+            tx->response_chunk_header_len = 0;
+
             if (rc != HTP_OK) return HTP_ERROR;
             break;
 
@@ -930,6 +938,10 @@ htp_status_t htp_tx_state_request_complete_partial(htp_tx_t *tx) {
 
     // Run hook REQUEST_COMPLETE.
     htp_status_t rc = htp_hook_run_all(tx->connp->cfg->hook_request_complete, tx);
+
+    // Reset the chunk header length to avoid double accounting
+    tx->request_chunk_header_len = 0;
+
     if (rc != HTP_OK) return rc;   
 
     return HTP_OK;
@@ -1105,6 +1117,10 @@ htp_status_t htp_tx_state_response_complete_ex(htp_tx_t *tx, int hybrid_mode) {
 
         // Run hook RESPONSE_COMPLETE.
         htp_status_t rc = htp_hook_run_all(tx->connp->cfg->hook_response_complete, tx);
+
+        // Reset the chunk header length to avoid double accounting
+        tx->response_chunk_header_len = 0;
+
         if (rc != HTP_OK) return rc;
     }
 

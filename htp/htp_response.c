@@ -356,6 +356,7 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_DATA_END(htp_connp_t *connp) {
             OUT_NEXT_BYTE_OR_RETURN(connp);
 
             connp->out_tx->response_message_len++;
+            connp->out_tx->response_chunk_header_len++;
         }
 
         if (connp->out_status == HTP_STREAM_CLOSED) {
@@ -400,6 +401,10 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_DATA(htp_connp_t *connp) {
         htp_status_t rc = htp_tx_res_process_body_data_ex(connp->out_tx,
             connp->out_current_data + connp->out_current_read_offset - bytes_to_consume,
             bytes_to_consume);
+
+        // Reset chunk header length
+        connp->out_tx->response_chunk_header_len = 0;
+
         if (rc != HTP_OK) return rc;
     }
 
@@ -430,6 +435,9 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
         // the states could handle it correctly.
         if (connp->out_status != HTP_STREAM_CLOSED) {
             OUT_COPY_BYTE_OR_RETURN(connp);
+
+            connp->out_tx->response_message_len++;
+            connp->out_tx->response_chunk_header_len++;
         }
         
         // Have we reached the end of the line?
@@ -440,8 +448,6 @@ htp_status_t htp_connp_RES_BODY_CHUNKED_LENGTH(htp_connp_t *connp) {
             if (htp_connp_res_consolidate_data(connp, &data, &len) != HTP_OK) {
                 return HTP_ERROR;
             }
-
-            connp->out_tx->response_message_len += len;
 
             #ifdef HTP_DEBUG
             fprint_raw_data(stderr, "Chunk length line", data, len);
