@@ -174,7 +174,8 @@ int64_t htp_parse_positive_integer_whitespace(unsigned char *data, size_t len, i
 int htp_parse_status(bstr *status);
 int htp_parse_authorization_digest(htp_connp_t *connp, htp_header_t *auth_header);
 int htp_parse_authorization_basic(htp_connp_t *connp, htp_header_t *auth_header);
-
+int htp_parse_authorization_ntlm(htp_connp_t *connp, htp_header_t *auth_header);
+int htp_parse_authenticate_ntlm(htp_connp_t *connp, htp_header_t *auth_header);
 void htp_print_log(FILE *stream, htp_log_t *log);
 
 void fprint_bstr(FILE *stream, const char *name, bstr *b);
@@ -207,6 +208,7 @@ int htp_transcode_bstr(iconv_t cd, bstr *input, bstr **output);
 int htp_parse_single_cookie_v0(htp_connp_t *connp, unsigned char *data, size_t len);
 int htp_parse_cookies_v0(htp_connp_t *connp);
 int htp_parse_authorization(htp_connp_t *connp);
+int htp_parse_authenticate(htp_connp_t *connp);
 
 htp_status_t htp_extract_quoted_string_as_bstr(unsigned char *data, size_t len, bstr **out, size_t *endoffset);
 

@@ -144,8 +144,22 @@ enum htp_auth_type_t {
     /** HTTP Digest authentication used. */
     HTP_AUTH_DIGEST = 3,
 
+    /** HTTP NTLM authentication used. */
+    HTP_AUTH_NTLM = 4,
+
     /** Unrecognized authentication method. */
     HTP_AUTH_UNRECOGNIZED = 9
+};
+
+/**
+ * Enumerates the possible NTLM message types.
+ */
+enum htp_auth_ntlm_message_type {
+    HTP_AUTH_NTLM_MESSAGE_TYPE_UNKNOWN = 0,
+    HTP_AUTH_NTLM_MESSAGE_TYPE_INITIAL = 1,
+    HTP_AUTH_NTLM_MESSAGE_TYPE1 = 2,
+    HTP_AUTH_NTLM_MESSAGE_TYPE2 = 3,
+    HTP_AUTH_NTLM_MESSAGE_TYPE3 = 4
 };
 
 enum htp_content_encoding_t {

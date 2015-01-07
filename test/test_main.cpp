@@ -990,11 +990,13 @@ TEST_F(ConnectionParsing, AuthBasic) {
 
     ASSERT_EQ(HTP_AUTH_BASIC, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username != NULL);
-    ASSERT_EQ(0, bstr_cmp_c(tx->request_auth_username, "ivanr"));
+    ASSERT_TRUE(tx->request_auth.basic_digest != NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest->username != NULL);
+    ASSERT_EQ(0, bstr_cmp_c(tx->request_auth.basic_digest->username, "ivanr"));
 
-    ASSERT_TRUE(tx->request_auth_password != NULL);
-    ASSERT_EQ(0, bstr_cmp_c(tx->request_auth_password, "secret"));
+    ASSERT_TRUE(tx->request_auth.basic_digest != NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest->password != NULL);
+    ASSERT_EQ(0, bstr_cmp_c(tx->request_auth.basic_digest->password, "secret"));
 }
 
 TEST_F(ConnectionParsing, AuthDigest) {
@@ -1008,10 +1010,11 @@ TEST_F(ConnectionParsing, AuthDigest) {
 
     ASSERT_EQ(HTP_AUTH_DIGEST, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username != NULL);
-    ASSERT_EQ(0, bstr_cmp_c(tx->request_auth_username, "ivanr"));
+    ASSERT_TRUE(tx->request_auth.basic_digest != NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest->username != NULL);
+    ASSERT_EQ(0, bstr_cmp_c(tx->request_auth.basic_digest->username, "ivanr"));
 
-    ASSERT_TRUE(tx->request_auth_password == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest->password == NULL);
 }
 
 TEST_F(ConnectionParsing, Http_0_9_MethodOnly) {
@@ -1054,9 +1057,7 @@ TEST_F(ConnectionParsing, AuthBasicInvalid) {
 
     ASSERT_EQ(HTP_AUTH_BASIC, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username == NULL);
-
-    ASSERT_TRUE(tx->request_auth_password == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest == NULL);
 
     ASSERT_TRUE(tx->flags & HTP_AUTH_INVALID);
 }
@@ -1072,9 +1073,7 @@ TEST_F(ConnectionParsing, AuthDigestUnquotedUsername) {
 
     ASSERT_EQ(HTP_AUTH_DIGEST, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username == NULL);
-
-    ASSERT_TRUE(tx->request_auth_password == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest == NULL);
 
     ASSERT_TRUE(tx->flags & HTP_AUTH_INVALID);
 }
@@ -1090,9 +1089,7 @@ TEST_F(ConnectionParsing, AuthDigestInvalidUsername1) {
 
     ASSERT_EQ(HTP_AUTH_DIGEST, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username == NULL);
-
-    ASSERT_TRUE(tx->request_auth_password == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest == NULL);
 
     ASSERT_TRUE(tx->flags & HTP_AUTH_INVALID);
 }
@@ -1108,9 +1105,7 @@ TEST_F(ConnectionParsing, AuthUnrecognized) {
 
     ASSERT_EQ(HTP_AUTH_UNRECOGNIZED, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username == NULL);
-
-    ASSERT_TRUE(tx->request_auth_password == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest == NULL);
 }
 
 TEST_F(ConnectionParsing, InvalidResponseHeaders1) {
@@ -1816,9 +1811,9 @@ TEST_F(ConnectionParsing, AuthDigestInvalidUsername2) {
 
     ASSERT_EQ(HTP_AUTH_DIGEST, tx->request_auth_type);
 
-    ASSERT_TRUE(tx->request_auth_username == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest->username == NULL);
 
-    ASSERT_TRUE(tx->request_auth_password == NULL);
+    ASSERT_TRUE(tx->request_auth.basic_digest->password == NULL);
 
     ASSERT_TRUE(tx->flags & HTP_AUTH_INVALID);
 }

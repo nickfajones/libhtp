@@ -136,8 +136,30 @@ void htp_tx_destroy_incomplete(htp_tx_t *tx) {
     bstr_free(tx->request_hostname);
     htp_uri_free(tx->parsed_uri_raw);
     htp_uri_free(tx->parsed_uri);
-    bstr_free(tx->request_auth_username);
-    bstr_free(tx->request_auth_password);
+
+    if (((tx->request_auth_type == HTP_AUTH_BASIC) ||
+         (tx->request_auth_type == HTP_AUTH_DIGEST)) &&
+        (tx->request_auth.basic_digest != NULL)) {
+        bstr_free(tx->request_auth.basic_digest->username);
+        bstr_free(tx->request_auth.basic_digest->password);
+        free(tx->request_auth.basic_digest);
+    } else if ((tx->request_auth_type == HTP_AUTH_NTLM) &&
+                (tx->request_auth.ntlm != NULL)) {
+        if (tx->request_auth.ntlm->type == HTP_AUTH_NTLM_MESSAGE_TYPE1) {
+            bstr_free(tx->request_auth.ntlm->message.type1.hostname);
+            bstr_free(tx->request_auth.ntlm->message.type1.domainname);
+        } else if (tx->request_auth.ntlm->type == HTP_AUTH_NTLM_MESSAGE_TYPE2) {
+            bstr_free(tx->request_auth.ntlm->message.type2.nonce);
+        } else if (tx->request_auth.ntlm->type == HTP_AUTH_NTLM_MESSAGE_TYPE3) {
+            bstr_free(tx->request_auth.ntlm->message.type3.domainname);
+            bstr_free(tx->request_auth.ntlm->message.type3.username);
+            bstr_free(tx->request_auth.ntlm->message.type3.hostname);
+            bstr_free(tx->request_auth.ntlm->message.type3.lm_response);
+            bstr_free(tx->request_auth.ntlm->message.type3.nt_response);
+        }
+        bstr_free(tx->request_auth.ntlm->raw_message);
+        free(tx->request_auth.ntlm);
+    }
 
     // Request_headers.
     if (tx->request_headers != NULL) {
@@ -191,6 +213,15 @@ void htp_tx_destroy_incomplete(htp_tx_t *tx) {
     bstr_free(tx->response_status);
     bstr_free(tx->response_message);
     bstr_free(tx->response_content_type);
+
+    if ((tx->response_auth_type == HTP_AUTH_NTLM) &&
+        (tx->response_auth_ntlm != NULL)) {
+        if (tx->response_auth_ntlm->type == HTP_AUTH_NTLM_MESSAGE_TYPE2) {
+            bstr_free(tx->response_auth_ntlm->message.type2.nonce);
+        }
+        bstr_free(tx->response_auth_ntlm->raw_message);
+        free(tx->response_auth_ntlm);
+    }
 
     // Destroy response headers.
     if (tx->response_headers != NULL) {
@@ -1198,6 +1229,17 @@ htp_status_t htp_tx_state_response_headers(htp_tx_t *tx) {
                 tx->flags |= HTP_RESPONSE_INVALID;
                 htp_log(tx->connp, HTP_LOG_MARK, HTP_LOG_WARNING, 0, "Partial (206) response with invalid C-R header");
             }
+        }
+    }
+
+    // Parse authentication information in the response.
+    if (tx->connp->cfg->parse_request_auth) {
+        int rc = htp_parse_authenticate(tx->connp);
+        if (rc == HTP_DECLINED) {
+            // Don't fail the stream if an authenticate header is invalid, just set a flag.
+            tx->flags |= HTP_AUTH_INVALID;
+        } else {
+            if (rc != HTP_OK) return rc;
         }
     }
 

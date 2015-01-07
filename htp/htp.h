@@ -182,6 +182,61 @@ struct htp_param_t {
 };
 
 /**
+ * Basic and Digest authentication parameters.
+ */
+struct htp_auth_params_basic_digest {
+    /** basic/digest authentication username. */
+    bstr *username;
+
+    /** basic authentication password.
+     *  Available only when htp_tx_t::request_auth_type is HTP_AUTH_BASIC.
+     */
+    bstr *password;
+};
+
+/**
+ * NTLM authentication parameters.
+ */
+struct htp_auth_params_ntlm {
+    /** NTLM authentication message type. */
+    enum htp_auth_ntlm_message_type type;
+
+    bstr *raw_message;
+
+    union {
+        struct {
+            /** NTLM authentication hostname. */
+            bstr *hostname;
+
+            /** NTLM authentication domainname. */
+            bstr *domainname;
+        } type1;
+
+        struct {
+            /** NTLM authentication server nonce. */
+            bstr *nonce;
+        } type2;
+
+        struct {
+            /** NTLM authentication domainname. */
+            bstr *domainname;
+
+            /** NTLM authentication username. */
+            bstr *username;
+
+            /** NTLM authentication hostname. */
+            bstr *hostname;
+
+            /** NTLM LanManager response */
+            bstr *lm_response;
+
+            /** NTLM NT response; */
+            bstr *nt_response;
+        } type3;
+    } message;
+};
+
+/**
  * Represents a single HTTP transaction, which is a combination of a request and a response.
  */
 struct htp_tx_t {
@@ -377,11 +432,11 @@ struct htp_tx_t {
     /** Authentication type used in the request. */
     enum htp_auth_type_t request_auth_type;
 
-    /** Authentication username. */
-    bstr *request_auth_username;
-
-    /** Authentication password. Available only when htp_tx_t::request_auth_type is HTP_AUTH_BASIC. */
-    bstr *request_auth_password;
+    /** Authentication parameters. */
+    union {
+        struct htp_auth_params_basic_digest *basic_digest;
+        struct htp_auth_params_ntlm *ntlm;
+    } request_auth;
 
     /**
      * Request hostname. Per the RFC, the hostname will be taken from the Host header
@@ -548,6 +603,11 @@ struct htp_tx_t {
      */
     bstr *response_content_type;
 
+    /** Authentication type used in the response. */
+    enum htp_auth_type_t response_auth_type;
+
+    /** Authentication parameters for NTLM message type 2 response. */
+    struct htp_auth_params_ntlm *response_auth_ntlm;
     
     // Common fields
 
