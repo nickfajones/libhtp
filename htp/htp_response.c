@@ -635,7 +635,7 @@ htp_status_t htp_connp_RES_BODY_DETERMINE(htp_connp_t *connp) {
         htp_header_t *te = htp_table_get_c(connp->out_tx->response_headers, "transfer-encoding");
 
         if (ct != NULL) {
-            connp->out_tx->response_content_type = bstr_dup_lower(ct->value);
+            bstr_safe_assign(connp->out_tx->response_content_type, bstr_dup_lower(ct->value));
             if (connp->out_tx->response_content_type == NULL) return HTP_ERROR;
 
             // Ignore parameters
@@ -822,7 +822,7 @@ htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
                     if (connp->cfg->process_response_header(connp, data, len) != HTP_OK) return HTP_ERROR;
                 } else {
                     // Keep the partial header data for parsing later.
-                    connp->out_header = bstr_dup_mem(data, len);
+                    bstr_safe_assign(connp->out_header, bstr_dup_mem(data, len));
                     if (connp->out_header == NULL) return HTP_ERROR;
                 }
             } else {
@@ -837,7 +837,7 @@ htp_status_t htp_connp_RES_HEADERS(htp_connp_t *connp) {
                     }
 
                     // Keep the header data for parsing later.
-                    connp->out_header = bstr_dup_mem(data, len);
+                    bstr_safe_assign(connp->out_header, bstr_dup_mem(data, len));
                     if (connp->out_header == NULL) return HTP_ERROR;
                 } else {
                     // Add to the existing header.                    
@@ -951,7 +951,7 @@ htp_status_t htp_connp_RES_LINE(htp_connp_t *connp) {
 
             int chomp_result = htp_chomp(data, &len);
 
-            connp->out_tx->response_line = bstr_dup_mem(data, len);
+            bstr_safe_assign(connp->out_tx->response_line, bstr_dup_mem(data, len));
             if (connp->out_tx->response_line == NULL) return HTP_ERROR;
 
             if (connp->cfg->parse_response_line(connp) != HTP_OK) return HTP_ERROR;

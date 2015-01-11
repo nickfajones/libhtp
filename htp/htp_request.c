@@ -607,7 +607,7 @@ htp_status_t htp_connp_REQ_HEADERS(htp_connp_t *connp) {
                     if (connp->cfg->process_request_header(connp, data, len) != HTP_OK) return HTP_ERROR;
                 } else {
                     // Keep the partial header data for parsing later.
-                    connp->in_header = bstr_dup_mem(data, len);
+                    bstr_safe_assign(connp->in_header, bstr_dup_mem(data, len));
                     if (connp->in_header == NULL) return HTP_ERROR;
                 }
             } else {
@@ -622,13 +622,13 @@ htp_status_t htp_connp_REQ_HEADERS(htp_connp_t *connp) {
                     }
 
                     // Keep the header data for parsing later.
-                    connp->in_header = bstr_dup_mem(data, len);
+                    bstr_safe_assign(connp->in_header, bstr_dup_mem(data, len));
                     if (connp->in_header == NULL) return HTP_ERROR;
                 } else {
                     // Add to the existing header.                    
                     bstr *new_in_header = bstr_add_mem(connp->in_header, data, len);
                     if (new_in_header == NULL) return HTP_ERROR;
-                    connp->in_header = new_in_header;
+                    bstr_safe_assign(connp->in_header, new_in_header);
                 }
             }
 
@@ -694,7 +694,7 @@ htp_status_t htp_connp_REQ_LINE(htp_connp_t *connp) {
 
             htp_chomp(data, &len);
 
-            connp->in_tx->request_line = bstr_dup_mem(data, len);
+            bstr_safe_assign(connp->in_tx->request_line, bstr_dup_mem(data, len));
             if (connp->in_tx->request_line == NULL) return HTP_ERROR;
 
             if (connp->cfg->parse_request_line(connp) != HTP_OK) return HTP_ERROR;

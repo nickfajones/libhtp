@@ -135,13 +135,13 @@ int htp_parse_authorization_basic(htp_connp_t *connp, htp_header_t *auth_header)
         return HTP_DECLINED;
     }
 
-    connp->in_tx->request_auth_username = bstr_dup_ex(decoded, 0, i);
+    bstr_safe_assign(connp->in_tx->request_auth_username, bstr_dup_ex(decoded, 0, i));
     if (connp->in_tx->request_auth_username == NULL) {
         bstr_free(decoded);
         return HTP_ERROR;
     }
     
-    connp->in_tx->request_auth_password = bstr_dup_ex(decoded, i + 1, bstr_len(decoded) - i - 1);
+    bstr_safe_assign(connp->in_tx->request_auth_password, bstr_dup_ex(decoded, i + 1, bstr_len(decoded) - i - 1));
     if (connp->in_tx->request_auth_password == NULL) {
         bstr_free(decoded);
         bstr_free(connp->in_tx->request_auth_username);

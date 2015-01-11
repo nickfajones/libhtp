@@ -135,10 +135,10 @@ htp_status_t htp_parse_request_header_generic(htp_connp_t *connp, htp_header_t *
         // TODO Apache will respond to this problem with a 400.
 
         // Now extract the name and the value
-        h->name = bstr_dup_c("");
+        bstr_safe_assign(h->name, bstr_dup_c(""));
         if (h->name == NULL) return HTP_ERROR;
 
-        h->value = bstr_dup_mem(data, len);
+        bstr_safe_assign(h->value, bstr_dup_mem(data, len));
         if (h->value == NULL) {
             bstr_free(h->name);
             return HTP_ERROR;
@@ -224,10 +224,10 @@ htp_status_t htp_parse_request_header_generic(htp_connp_t *connp, htp_header_t *
     }
 
     // Now extract the name and the value
-    h->name = bstr_dup_mem(data + name_start, name_end - name_start);
+    bstr_safe_assign(h->name, bstr_dup_mem(data + name_start, name_end - name_start));
     if (h->name == NULL) return HTP_ERROR;
 
-    h->value = bstr_dup_mem(data + value_start, value_end - value_start);
+    bstr_safe_assign(h->value, bstr_dup_mem(data + value_start, value_end - value_start));
     if (h->value == NULL) {
         bstr_free(h->name);
         return HTP_ERROR;
@@ -272,7 +272,7 @@ htp_status_t htp_parse_request_line_generic_ex(htp_connp_t *connp, int nul_termi
 
     // No, we don't care if the method is empty.
 
-    tx->request_method = bstr_dup_mem(data, pos);
+    bstr_safe_assign(tx->request_method, bstr_dup_mem(data, pos));
     if (tx->request_method == NULL) return HTP_ERROR;
 
     #ifdef HTP_DEBUG
@@ -302,7 +302,7 @@ htp_status_t htp_parse_request_line_generic_ex(htp_connp_t *connp, int nul_termi
     // The URI ends with the first whitespace.
     while ((pos < len) && (!htp_is_space(data[pos]))) pos++;
 
-    tx->request_uri = bstr_dup_mem(data + start, pos - start);
+    bstr_safe_assign(tx->request_uri, bstr_dup_mem(data + start, pos - start));
     if (tx->request_uri == NULL) return HTP_ERROR;
 
     #ifdef HTP_DEBUG
@@ -323,7 +323,7 @@ htp_status_t htp_parse_request_line_generic_ex(htp_connp_t *connp, int nul_termi
     }
 
     // The protocol information continues until the end of the line.
-    tx->request_protocol = bstr_dup_mem(data + pos, len - pos);
+    bstr_safe_assign(tx->request_protocol, bstr_dup_mem(data + pos, len - pos));
     if (tx->request_protocol == NULL) return HTP_ERROR;
 
     tx->request_protocol_number = htp_parse_protocol(tx->request_protocol);

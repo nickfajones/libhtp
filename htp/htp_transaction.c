@@ -315,7 +315,7 @@ htp_status_t htp_tx_req_set_header(htp_tx_t *tx, const char *name, size_t name_l
 htp_status_t htp_tx_req_set_method(htp_tx_t *tx, const char *method, size_t method_len, enum htp_alloc_strategy_t alloc) {
     if ((tx == NULL) || (method == NULL)) return HTP_ERROR;
 
-    tx->request_method = copy_or_wrap_mem(method, method_len, alloc);
+    bstr_safe_assign(tx->request_method, copy_or_wrap_mem(method, method_len, alloc));
     if (tx->request_method == NULL) return HTP_ERROR;
 
     return HTP_OK;
@@ -329,7 +329,7 @@ void htp_tx_req_set_method_number(htp_tx_t *tx, enum htp_method_t method_number)
 htp_status_t htp_tx_req_set_uri(htp_tx_t *tx, const char *uri, size_t uri_len, enum htp_alloc_strategy_t alloc) {
     if ((tx == NULL) || (uri == NULL)) return HTP_ERROR;
 
-    tx->request_uri = copy_or_wrap_mem(uri, uri_len, alloc);
+    bstr_safe_assign(tx->request_uri, copy_or_wrap_mem(uri, uri_len, alloc));
     if (tx->request_uri == NULL) return HTP_ERROR;
 
     return HTP_OK;
@@ -338,7 +338,7 @@ htp_status_t htp_tx_req_set_uri(htp_tx_t *tx, const char *uri, size_t uri_len, e
 htp_status_t htp_tx_req_set_protocol(htp_tx_t *tx, const char *protocol, size_t protocol_len, enum htp_alloc_strategy_t alloc) {
     if ((tx == NULL) || (protocol == NULL)) return HTP_ERROR;
 
-    tx->request_protocol = copy_or_wrap_mem(protocol, protocol_len, alloc);
+    bstr_safe_assign(tx->request_protocol, copy_or_wrap_mem(protocol, protocol_len, alloc));
     if (tx->request_protocol == NULL) return HTP_ERROR;
 
     return HTP_OK;
@@ -493,7 +493,7 @@ static htp_status_t htp_tx_process_request_headers(htp_tx_t *tx) {
 
     // Use the hostname from the URI, when available.   
     if (tx->parsed_uri->hostname != NULL) {
-        tx->request_hostname = bstr_dup(tx->parsed_uri->hostname);
+        bstr_safe_assign(tx->request_hostname, bstr_dup(tx->parsed_uri->hostname));
         if (tx->request_hostname == NULL) return HTP_ERROR;
     }
 
@@ -708,7 +708,7 @@ htp_status_t htp_tx_req_set_headers_clear(htp_tx_t *tx) {
 htp_status_t htp_tx_req_set_line(htp_tx_t *tx, const char *line, size_t line_len, enum htp_alloc_strategy_t alloc) {
     if ((tx == NULL) || (line == NULL) || (line_len == 0)) return HTP_ERROR;
 
-    tx->request_line = copy_or_wrap_mem(line, line_len, alloc);
+    bstr_safe_assign(tx->request_line, copy_or_wrap_mem(line, line_len, alloc));
     if (tx->request_line == NULL) return HTP_ERROR;
 
     if (tx->connp->cfg->parse_request_line(tx->connp) != HTP_OK) return HTP_ERROR;
@@ -729,7 +729,7 @@ void htp_tx_req_set_parsed_uri(htp_tx_t *tx, htp_uri_t *parsed_uri) {
 htp_status_t htp_tx_res_set_status_line(htp_tx_t *tx, const char *line, size_t line_len, enum htp_alloc_strategy_t alloc) {
     if ((tx == NULL) || (line == NULL) || (line_len == 0)) return HTP_ERROR;
 
-    tx->response_line = copy_or_wrap_mem(line, line_len, alloc);
+    bstr_safe_assign(tx->response_line, copy_or_wrap_mem(line, line_len, alloc));
     if (tx->response_line == NULL) return HTP_ERROR;
 
     if (tx->connp->cfg->parse_response_line(tx->connp) != HTP_OK) return HTP_ERROR;
@@ -754,7 +754,7 @@ htp_status_t htp_tx_res_set_status_message(htp_tx_t *tx, const char *msg, size_t
         bstr_free(tx->response_message);
     }
 
-    tx->response_message = copy_or_wrap_mem(msg, msg_len, alloc);
+    bstr_safe_assign(tx->response_message, copy_or_wrap_mem(msg, msg_len, alloc));
     if (tx->response_message == NULL) return HTP_ERROR;
 
     return HTP_OK;

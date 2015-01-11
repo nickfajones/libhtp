@@ -65,7 +65,7 @@ htp_status_t htp_parse_response_line_generic(htp_connp_t *connp) {
     while ((pos < len) && (!htp_is_space(data[pos]))) pos++;    
     if (pos - start == 0) return HTP_OK;
     
-    tx->response_protocol = bstr_dup_mem(data + start, pos - start);
+    bstr_safe_assign(tx->response_protocol, bstr_dup_mem(data + start, pos - start));
     if (tx->response_protocol == NULL) return HTP_ERROR;    
 
     tx->response_protocol_number = htp_parse_protocol(tx->response_protocol);
@@ -85,7 +85,7 @@ htp_status_t htp_parse_response_line_generic(htp_connp_t *connp) {
     while ((pos < len) && (!htp_is_space(data[pos]))) pos++;    
     if (pos - start == 0) return HTP_OK;
     
-    tx->response_status = bstr_dup_mem(data + start, pos - start);
+    bstr_safe_assign(tx->response_status, bstr_dup_mem(data + start, pos - start));
     if (tx->response_status == NULL) return HTP_ERROR;
 
     tx->response_status_number = htp_parse_status(tx->response_status);
@@ -100,7 +100,7 @@ htp_status_t htp_parse_response_line_generic(htp_connp_t *connp) {
     if (pos == len) return HTP_OK;
 
     // Assume the message stretches until the end of the line.    
-    tx->response_message = bstr_dup_mem(data + pos, len - pos);
+    bstr_safe_assign(tx->response_message, bstr_dup_mem(data + pos, len - pos));
     if (tx->response_message == NULL) return HTP_ERROR;    
 
     #ifdef HTP_DEBUG
@@ -214,8 +214,8 @@ htp_status_t htp_parse_response_header_generic(htp_connp_t *connp, htp_header_t 
     }
 
     // Now extract the name and the value.
-    h->name = bstr_dup_mem(data + name_start, name_end - name_start);
-    h->value = bstr_dup_mem(data + value_start, value_end - value_start);
+    bstr_safe_assign(h->name, bstr_dup_mem(data + name_start, name_end - name_start));
+    bstr_safe_assign(h->value, bstr_dup_mem(data + value_start, value_end - value_start));
     if ((h->name == NULL) || (h->value == NULL)) {
         bstr_free(h->name);
         bstr_free(h->value);

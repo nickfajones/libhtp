@@ -49,6 +49,7 @@ typedef struct bstr_t bstr;
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <assert.h>
 
 #include "bstr_builder.h"
 
@@ -621,6 +622,40 @@ bstr *bstr_wrap_c(const char *cstr);
  * @return New bstring, or NULL on memory allocation failure.
  */
 bstr *bstr_wrap_mem(const void *data, size_t len);
+
+/**
+ * Assign a bstr address to a bstr pointer in a safe and debuggable fashion
+ *
+ * @param[in,out] p
+ * @param[in] b
+ */
+#ifndef HTP_BSTR_DEBUG
+# define bstr_safe_assign(target, source) \
+    do { \
+        bstr **p = &(target);\
+        bstr *b = (source);\
+ \
+        if (*p != NULL) { \
+            bstr_free(*p); \
+        } \
+ \
+        *p = b; \
+    } while (0)
+#else
+# define bstr_safe_assign(target, source) \
+    do { \
+        bstr **p = &(target);\
+        bstr *b = (source);\
+ \
+        assert(*p == NULL); \
+ \
+        if (*p != NULL) { \
+            bstr_free(*p); \
+        } \
+ \
+        *p = b; \
+    } while (0)
+#endif
 
 #ifdef __cplusplus
 }

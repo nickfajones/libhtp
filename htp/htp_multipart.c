@@ -231,7 +231,7 @@ htp_status_t htp_mpart_part_parse_c_d(htp_multipart_part_t *part) {
                     return HTP_DECLINED;
                 }
                 
-                part->name = bstr_dup_mem(data + start, pos - start - 1);
+                bstr_safe_assign(part->name, bstr_dup_mem(data + start, pos - start - 1));
                 if (part->name == NULL) return HTP_ERROR;
 
                 htp_mpart_decode_quoted_cd_value_inplace(part->name);
@@ -245,7 +245,7 @@ htp_status_t htp_mpart_part_parse_c_d(htp_multipart_part_t *part) {
                     return HTP_DECLINED;
                 }
                  
-                part->filename = bstr_dup_mem(data + start, pos - start - 1);
+                bstr_safe_assign(part->filename, bstr_dup_mem(data + start, pos - start - 1));
                 if (part->filename == NULL) return HTP_ERROR;
 
                 htp_mpart_decode_quoted_cd_value_inplace(part->filename);
@@ -537,7 +537,9 @@ htp_status_t htp_mpart_part_finalize_data(htp_multipart_part_t *part) {
     } else {
         // Combine value pieces into a single buffer.
         if (bstr_builder_size(part->parser->part_data_pieces) > 0) {
-            part->value = bstr_builder_to_str(part->parser->part_data_pieces);
+            bstr_safe_assign(part->value, bstr_builder_to_str(part->parser->part_data_pieces));
+            if (part->value == NULL)
+                return HTP_ERROR;
             bstr_builder_clear(part->parser->part_data_pieces);
         }
     }
@@ -584,7 +586,8 @@ htp_status_t htp_mpart_part_handle_data(htp_multipart_part_t *part, const unsign
     // will keep all its data in the part_data_pieces structure. If it ends up not being the
     // epilogue, this structure will be cleared.
     if ((part->parser->multipart.flags & HTP_MULTIPART_SEEN_LAST_BOUNDARY) && (part->type == MULTIPART_PART_UNKNOWN)) {
-        bstr_builder_append_mem(part->parser->part_data_pieces, data, len);
+        if (bstr_builder_append_mem(part->parser->part_data_pieces, data, len) != HTP_OK)
+            return HTP_ERROR;
     }
 
     if (part->parser->current_part_mode == MODE_LINE) {
@@ -597,7 +600,8 @@ htp_status_t htp_mpart_part_handle_data(htp_multipart_part_t *part, const unsign
 
             // If this line came to us in pieces, combine them now into a single buffer.
             if (bstr_builder_size(part->parser->part_header_pieces) > 0) {
-                bstr_builder_append_mem(part->parser->part_header_pieces, data, len);
+                if (bstr_builder_append_mem(part->parser->part_header_pieces, data, len) != HTP_OK)
+                    return HTP_ERROR;
                 line = bstr_builder_to_str(part->parser->part_header_pieces);
                 if (line == NULL) return HTP_ERROR;
                 bstr_builder_clear(part->parser->part_header_pieces);
@@ -681,12 +685,13 @@ htp_status_t htp_mpart_part_handle_data(htp_multipart_part_t *part, const unsign
                         }
                         
                         bstr_free(part->parser->pending_header_line);
+                        part->parser->pending_header_line = NULL;
 
                         if (line != NULL) {
-                            part->parser->pending_header_line = line;
+                            bstr_safe_assign(part->parser->pending_header_line, line);
                             line = NULL;
                         } else {
-                            part->parser->pending_header_line = bstr_dup_mem(data, len);
+                            bstr_safe_assign(part->parser->pending_header_line, bstr_dup_mem(data, len));
                             if (part->parser->pending_header_line == NULL) return HTP_ERROR;
                         }
                     }
@@ -697,7 +702,8 @@ htp_status_t htp_mpart_part_handle_data(htp_multipart_part_t *part, const unsign
             line = NULL;
         } else {
             // Not end of line; keep the data chunk for later.
-            bstr_builder_append_mem(part->parser->part_header_pieces, data, len);
+            if (bstr_builder_append_mem(part->parser->part_header_pieces, data, len) != HTP_OK)
+                return HTP_ERROR;
         }
     } else {
         // Data mode; keep the data chunk for later (but not if it is a file).
@@ -707,7 +713,8 @@ htp_status_t htp_mpart_part_handle_data(htp_multipart_part_t *part, const unsign
             case MULTIPART_PART_TEXT:
             case MULTIPART_PART_UNKNOWN:
                 // Make a copy of the data in RAM.
-                bstr_builder_append_mem(part->parser->part_data_pieces, data, len);
+                if (bstr_builder_append_mem(part->parser->part_data_pieces, data, len) != HTP_OK)
+                    return HTP_ERROR;
                 break;
 
             case MULTIPART_PART_FILE:
@@ -1208,7 +1215,8 @@ STATE_SWITCH:
 
                 // No more data in the input buffer; store (buffer) the unprocessed
                 // part for later, for after we find out if this is a boundary.
-                bstr_builder_append_mem(parser->boundary_pieces, data + startpos, len - startpos);
+                if (bstr_builder_append_mem(parser->boundary_pieces, data + startpos, len - startpos) != HTP_OK)
+                    return HTP_ERROR;
 
                 break;
 
@@ -1480,7 +1488,7 @@ htp_status_t htp_mpartp_find_boundary(bstr *content_type, bstr **boundary, uint6
             startpos--;
         }
 
-        *boundary = bstr_dup_mem(data + startpos, pos - startpos);
+        bstr_safe_assign(*boundary, bstr_dup_mem(data + startpos, pos - startpos));
         if (*boundary == NULL) return HTP_ERROR;
 
         pos++; // Over the double quote.
@@ -1495,7 +1503,7 @@ htp_status_t htp_mpartp_find_boundary(bstr *content_type, bstr **boundary, uint6
         // checks of boundary characters will catch irregularities.
         while ((pos < len) && (data[pos] != ',') && (data[pos] != ';') && (!htp_is_space(data[pos]))) pos++;
 
-        *boundary = bstr_dup_mem(data + startpos, pos - startpos);
+        bstr_safe_assign(*boundary, bstr_dup_mem(data + startpos, pos - startpos));
         if (*boundary == NULL) return HTP_ERROR;
     }
 
